@@ -1,6 +1,5 @@
 from opentrons import protocol_api
 from itertools import product
-import sys
 
 metadata = {'apiLevel': '2.7'}
 
