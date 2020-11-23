@@ -10,7 +10,7 @@
             "type": "python",
             "request": "launch",
             "module": "opentrons.simulate",
-            "args": ["syn96.py"]//, "ctab", "200", "haucl4", "2", "agno3", "2,3,4,5", "aa", "1.6", "hcl", "1,3,5,19,15,20", "seed", "0.2,0.5,1.5"]
+            "args": ["syn96.py"]
         }
     ]
 }
