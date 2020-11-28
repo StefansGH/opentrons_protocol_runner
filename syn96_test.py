@@ -1,9 +1,10 @@
 from opentrons import protocol_api
 from itertools import product
+import json
 
 metadata = {'apiLevel': '2.7'}
 
-protocol_params = {"ctab": [150], "haucl4": [10], "agno3": [10,30], "aa": [10], "hcl": [10,30], "seed": [10,30]}
+protocol_params = {"ctab": [1], "haucl4": [2], "agno3": [3], "aa": [4], "hcl": [3], "seed": [2]}
 tuberack_labels = {"A1": "ctab", "B1": "ctab", "C1": "ctab", "D1": "ctab",
                     "A2": "ctab", "B2": "ctab", "C2": "ctab", "D2": "ctab",
                     "A3": "ctab", "B3": "ctab",
@@ -11,13 +12,16 @@ tuberack_labels = {"A1": "ctab", "B1": "ctab", "C1": "ctab", "D1": "ctab",
 
 wells = [i[0]+str(i[1]) for i in list(product(list('ABCDEFGH'), range(1,13)))]
 param_sets = list(product(*protocol_params.values())) # for every well a combination of volumes eg. (20,3,1.6,15)
+with open('mytiprack.json') as labware_file:
+    mytiprack = json.load(labware_file)
 
 def run(protocol: protocol_api.ProtocolContext):
+    tiprack3 = protocol.load_labware_from_definition(mytiprack, 7)
     tuberack, tube_volume = protocol.load_labware('opentrons_24_tuberack_eppendorf_2ml_safelock_snapcap', 1), 2000
     wellplate = protocol.load_labware('nest_96_wellplate_200ul_flat', 3)
-    tiprack_10 = protocol.load_labware('opentrons_96_filtertiprack_20ul', 6)
+    tiprack_10 = protocol.load_labware('opentrons_96_tiprack_10ul', 6) 
     tiprack_200 = protocol.load_labware('opentrons_96_filtertiprack_200ul', 2)
-    p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10]) #1-10
+    p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack3]) #1-10
     p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
 
     for param_idx in range(len(protocol_params)):
