@@ -3,7 +3,7 @@ from itertools import product
 
 metadata = {'apiLevel': '2.7'}
 
-protocol_params = {"ctab": [200], "haucl4": [2], "agno3": [2,3,4,5], "aa": [1.6], "hcl": [1,3,5,10,15,20], "seed": [0.2,0.5,1,5]}
+protocol_params = {"ctab": [150], "haucl4": [10], "agno3": [10,30], "aa": [10], "hcl": [10,30], "seed": [10,30]}
 tuberack_labels = {"A1": "ctab", "B1": "ctab", "C1": "ctab", "D1": "ctab",
                     "A2": "ctab", "B2": "ctab", "C2": "ctab", "D2": "ctab",
                     "A3": "ctab", "B3": "ctab",
@@ -14,11 +14,11 @@ param_sets = list(product(*protocol_params.values())) # for every well a combina
 
 def run(protocol: protocol_api.ProtocolContext):
     tuberack, tube_volume = protocol.load_labware('opentrons_24_tuberack_eppendorf_2ml_safelock_snapcap', 1), 2000
-    wellplate = protocol.load_labware('biorad_96_wellplate_200ul_pcr', 2)
-    tiprack_10 = protocol.load_labware('opentrons_96_tiprack_10ul', 3)
-    tiprack_300 = protocol.load_labware('opentrons_96_tiprack_300ul', 4)
+    wellplate = protocol.load_labware('nest_96_wellplate_200ul_flat', 3)
+    tiprack_10 = protocol.load_labware('opentrons_96_filtertiprack_20ul', 6)
+    tiprack_200 = protocol.load_labware('opentrons_96_filtertiprack_200ul', 2)
     p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10]) #1-10
-    p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_300]) #5-50
+    p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
 
     for param_idx in range(len(protocol_params)):
         param = list(protocol_params.keys())[param_idx]
@@ -41,6 +41,7 @@ def run(protocol: protocol_api.ProtocolContext):
                 v_tube -= v_max
                 pipette.dispense(v_max, wellplate.wells()[well_idx])
                 pipette.blow_out(wellplate.wells()[well_idx])
+                pipette.blow_out(wellplate.wells()[well_idx])
                 v -= v_max
 
             if v_tube<v: 
@@ -50,6 +51,7 @@ def run(protocol: protocol_api.ProtocolContext):
             v_tube -= v_max
             pipette.dispense(v, wellplate.wells()[well_idx])
             pipette.blow_out(wellplate.wells()[well_idx])
+            pipette.blow_out(wellplate.wells()[well_idx])
         pipette.return_tip()
 
     # Mixing
@@ -57,5 +59,6 @@ def run(protocol: protocol_api.ProtocolContext):
     pipette.pick_up_tip()
     for well_idx in range(min(96, len(param_sets))):
         pipette.mix(repetitions=2, volume=50, location=wellplate.wells()[well_idx])
+        pipette.blow_out(wellplate.wells()[well_idx])
         pipette.blow_out(wellplate.wells()[well_idx])
     pipette.return_tip()
