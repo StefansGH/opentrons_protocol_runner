@@ -12,21 +12,25 @@ tuberack_labels = {"A1": "ctab", "B1": "ctab", "C1": "ctab", "D1": "ctab",
 
 wells = [i[0]+str(i[1]) for i in list(product(list('ABCDEFGH'), range(1,13)))]
 param_sets = list(product(*protocol_params.values())) # for every well a combination of volumes eg. (20,3,1.6,15)
-with open('mytiprack.json') as labware_file:
-    mytiprack = json.load(labware_file)
+
+with open('smartprobes_24_tuberack_eppendorf_2ml_safelock_snapcap.json') as labware_file:
+    smartprobes_tuberack = json.load(labware_file)
+with open('smartprobes_96_tiprack_10ul.json') as labware_file:
+    smartprobes_tiprack_10 = json.load(labware_file)
+with open('smartprobes_96_wellplate_200ul_flat.json') as labware_file:
+    smartprobes_wellplate = json.load(labware_file)
 
 def run(protocol: protocol_api.ProtocolContext):
-    tiprack3 = protocol.load_labware_from_definition(mytiprack, 7)
-    tuberack, tube_volume = protocol.load_labware('opentrons_24_tuberack_eppendorf_2ml_safelock_snapcap', 1), 2000
-    wellplate = protocol.load_labware('nest_96_wellplate_200ul_flat', 3)
-    tiprack_10 = protocol.load_labware('opentrons_96_tiprack_10ul', 6) 
-    tiprack_200 = protocol.load_labware('opentrons_96_filtertiprack_200ul', 2)
-    p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack3]) #1-10
+    tuberack, tube_volume = protocol.load_labware_from_definition(smartprobes_tuberack, 1), 2000
+    wellplate = protocol.load_labware_from_definition(smartprobes_wellplate, 2)
+    tiprack_10 = protocol.load_labware_from_definition(smartprobes_tiprack_10, 3)
+    tiprack_200 = protocol.load_labware('opentrons_96_filtertiprack_200ul', 4)
+    p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10]) #1-10
     p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
 
     for param_idx in range(len(protocol_params)):
         param = list(protocol_params.keys())[param_idx]
-        if min(list(protocol_params.values())[param_idx])<5: #select pipette
+        if min(list(protocol_params.values())[param_idx])<=10: #select pipette
             pipette, v_max = p10, 10
         else:
             pipette, v_max = p50, 50
