@@ -4,7 +4,7 @@ import json
 
 metadata = {'apiLevel': '2.7'}
 
-protocol_params = {"ctab": [1], "haucl4": [2], "agno3": [3], "aa": [4], "hcl": [3], "seed": [2]}
+protocol_params = {"ctab": [5,10], "haucl4": [5,10], "agno3": [5,10], "aa": [5,10], "hcl": [5,10], "seed": [5,10]}
 tuberack_labels = {"A1": "ctab", "B1": "ctab", "C1": "ctab", "D1": "ctab",
                     "A2": "ctab", "B2": "ctab", "C2": "ctab", "D2": "ctab",
                     "A3": "ctab", "B3": "ctab",
@@ -22,9 +22,9 @@ with open('smartprobes_96_wellplate_200ul_flat.json') as labware_file:
 
 def run(protocol: protocol_api.ProtocolContext):
     tuberack, tube_volume = protocol.load_labware_from_definition(smartprobes_tuberack, 1), 2000
-    wellplate = protocol.load_labware_from_definition(smartprobes_wellplate, 2)
-    tiprack_10 = protocol.load_labware_from_definition(smartprobes_tiprack_10, 3)
-    tiprack_200 = protocol.load_labware('opentrons_96_filtertiprack_200ul', 4)
+    tiprack_10 = protocol.load_labware_from_definition(smartprobes_tiprack_10, 2)
+    tiprack_200 = protocol.load_labware('opentrons_96_filtertiprack_200ul', 5)
+    wellplate = protocol.load_labware_from_definition(smartprobes_wellplate, 3)
     p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10]) #1-10
     p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
 

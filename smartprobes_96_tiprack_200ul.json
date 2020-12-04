@@ -32,7 +32,7 @@
     "isTiprack": true,
     "isMagneticModuleCompatible": false,
     "tipLength": 51,
-    "tipOverlap": 5.5,
+    "tipOverlap": 7,
     "loadName": "smartprobes_96_tiprack_200ul"
   },
   "wells": {
