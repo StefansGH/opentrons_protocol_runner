@@ -10,7 +10,7 @@
             "type": "python",
             "request": "launch",
             "module": "opentrons.simulate",
-            "args": ["syn96_test.py"]
+            "args": ["syn96.py"]
         }
     ]
 }
