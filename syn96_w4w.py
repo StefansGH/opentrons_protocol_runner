@@ -2,7 +2,7 @@ from opentrons import protocol_api
 from itertools import product
 import json
 
-metadata = {'apiLevel': '2.7'}
+metadata = {'apiLevel': '2.7'} #
 
 protocol_params = {"ctab": [10,20], "haucl4": [10], "agno3": [10], "aa": [10], "hcl": [10], "seed": [10]}
 tuberack_labels = { "A1": "ctab", "A2": "ctab" "", "A3": "haucl4",  "A4": "seed",   "A5": "", "A6": "",
