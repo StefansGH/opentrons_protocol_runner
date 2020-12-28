@@ -17,7 +17,7 @@
   "version": 1,
   "namespace": "smartprobes",
   "metadata": {
-    "displayName": "smartprobes 96 Tip Rack 200 µL",
+    "displayName": "Tiprack200",
     "displayVolumeUnits": "µL",
     "displayCategory": "tipRack",
     "tags": []
