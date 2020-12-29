@@ -83,7 +83,7 @@ while data[4]=='False': #intil close==True
 
     pipette.return_tip()
 
-    data, _ = opentrons_socket.recvfrom(1024)
+    data, _ = opentrons_socket.recvfrom(1024) #get next action from server
     data = data.decode('utf-8').split(',')
 
 protocol.home()
