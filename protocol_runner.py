@@ -9,14 +9,15 @@ opentrons_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 opentrons_socket.bind((host, port))
 
 data, _ = opentrons_socket.recvfrom(1024)
-data = data.decode('utf-8').split(',') #data is a string "material,units,simulate,episode,close"
-simulate = data[2]=="True"
+data = data.decode('utf-8').split(',') #data is a string "material,units,simulate,well,close
+simulate = data[3]=="True"
 
 if simulate:
     protocol = opentrons.simulate.get_protocol_api('2.7')
-else:
+elif not simulate:
     protocol = opentrons.execute.get_protocol_api('2.7')
 
+### tuberack ###
 with open('src/hardware/smartprobes_24_tuberack_eppendorf_2ml_safelock_snapcap.json') as labware_file:
     smartprobes_tuberack = json.load(labware_file)
 tuberack = protocol.load_labware_from_definition(smartprobes_tuberack, 1)
@@ -24,18 +25,19 @@ tuberack = protocol.load_labware_from_definition(smartprobes_tuberack, 1)
 with open('src/materials/tuberack.json') as materials_file:
     tuberack_materials = json.load(materials_file)
 
-def find_tube_with_enough_volume(material, volume):
+def find_tube_with_enough_volume(material, concentration, volume):
     tube_idx = 0
     tube_label = list(tuberack_materials)[tube_idx] #eg 'B3'
-    while (tuberack_materials[tube_label][0]!=material) | (volume>tuberack_materials[tube_label][1]):
+    while (tuberack_materials[tube_label]['material']!=material) | (tuberack_materials[tube_label]['concentration']!=concentration) | (volume>tuberack_materials[tube_label]['volume']):
         tube_idx += 1
         tube_label = list(tuberack_materials)[tube_idx]
     return tube_label
 
 def update_tuberack_volumes(tuberack_materials, tube_label, volume):
-    tuberack_materials[tube_label] = [tuberack_materials[tube_label][0], tuberack_materials[tube_label][1] - volume]
+    tuberack_materials[tube_label]['volume'] = tuberack_materials[tube_label]['volume'] - volume
     return tuberack_materials
 
+### pipette/tips ###
 with open('src/hardware/smartprobes_96_tiprack_10ul.json') as labware_file:
     smartprobes_tiprack_10 = json.load(labware_file)
 tiprack_10 = protocol.load_labware_from_definition(smartprobes_tiprack_10, 2)
@@ -49,23 +51,28 @@ p10.well_bottom_clearance.dispense = 0
 p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
 p50.well_bottom_clearance.aspirate = 0
 
+### wellplate ###
 with open('src/hardware/smartprobes_96_wellplate_200ul_flat.json') as labware_file:
     smartprobes_wellplate = json.load(labware_file)
 wellplate = protocol.load_labware_from_definition(smartprobes_wellplate, 3)
 
+### protocol ###
 protocol.home()
-while data[4]=='False': #intil close==True
+while data[5]=='False': #intil close==True
     material = data[0]
-    volume = float(data[1])
-    well = wellplate.wells()[int(data[3])]
+    concentration = float(data[1])
+    volume = float(data[2])
+    well = wellplate.wells()[int(data[4])]
    
     if volume <= 10: 
         pipette, pipette_max_volume = p10, 10
     else:
         pipette, pipette_max_volume = p50, 50
 
-    tube_label = find_tube_with_enough_volume(material, volume)
-    tube, tube_volume = tube_label, tuberack_materials[tube_label][1]
+    if (material, concentration) not in [(tuberack_materials[w]['material'], tuberack_materials[w]['concentration']) for w in list(tuberack_materials)]: #check for wrongwriting in materials
+        print(material + ' ' + concentration+ ' not in tuberack!')
+    tube_label = find_tube_with_enough_volume(material, concentration, volume)
+    tube, tube_volume = tube_label, tuberack_materials[tube_label]['volume']
 
     pipette.pick_up_tip()
 
