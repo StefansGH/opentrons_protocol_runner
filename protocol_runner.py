@@ -2,9 +2,11 @@ import json
 import opentrons.simulate
 import opentrons.execute
 import socket
+import sys
 
-host = socket.gethostname()
-port = 8080
+host = str(sys.argv[1]) #ip
+port = int(sys.argv[2])
+
 opentrons_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 opentrons_socket.bind((host, port))
 
@@ -12,10 +14,10 @@ data, _ = opentrons_socket.recvfrom(1024)
 data = data.decode('utf-8').split(',') #data is a string "material,units,simulate,well,close
 simulate = data[3]=="True"
 
-if simulate:
-    protocol = opentrons.simulate.get_protocol_api('2.7')
-elif not simulate:
+if not simulate:
     protocol = opentrons.execute.get_protocol_api('2.7')
+else:
+    protocol = opentrons.simulate.get_protocol_api('2.7')
 
 ### tuberack ###
 with open('src/hardware/smartprobes_24_tuberack_eppendorf_2ml_safelock_snapcap.json') as labware_file:
@@ -47,9 +49,9 @@ with open('src/hardware/smartprobes_96_tiprack_200ul.json') as labware_file:
 tiprack_200 = protocol.load_labware_from_definition(smartprobes_tiprack_200, 5)
 
 p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10]) #1-10
-p10.well_bottom_clearance.dispense = 0
+#p10.well_bottom_clearance.dispense = 0
 p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
-p50.well_bottom_clearance.aspirate = 0
+#p50.well_bottom_clearance.aspirate = 0
 
 ### wellplate ###
 with open('src/hardware/smartprobes_96_wellplate_200ul_flat.json') as labware_file:
