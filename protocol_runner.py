@@ -4,20 +4,24 @@ import opentrons.execute
 import socket
 import sys
 
-host = str(sys.argv[1]) #ip
-port = int(sys.argv[2])
+#TODO: every action takes a new pipette also for same material
+
+host = socket.gethostbyname(socket.gethostname()) #str(sys.argv[1]) #ip
+port = 65432
 
 opentrons_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 opentrons_socket.bind((host, port))
 
 data, _ = opentrons_socket.recvfrom(1024)
-data = data.decode('utf-8').split(',') #data is a string "material,units,simulate,well,close
+data = data.decode('utf-8').split(',') #data is a string "material,units,simulate,well,close,return_tips
 simulate = data[3]=="True"
 
 if not simulate:
     protocol = opentrons.execute.get_protocol_api('2.7')
 else:
     protocol = opentrons.simulate.get_protocol_api('2.7')
+
+return_tips = data[6]=="True"
 
 ### tuberack ###
 with open('src/hardware/smartprobes_24_tuberack_eppendorf_2ml_safelock_snapcap.json') as labware_file:
@@ -49,9 +53,12 @@ with open('src/hardware/smartprobes_96_tiprack_200ul.json') as labware_file:
 tiprack_200 = protocol.load_labware_from_definition(smartprobes_tiprack_200, 5)
 
 p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10]) #1-10
-#p10.well_bottom_clearance.dispense = 0
+p10.well_bottom_clearance.aspirate = 0
+p10.well_bottom_clearance.dispense = 0
+
 p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
-#p50.well_bottom_clearance.aspirate = 0
+p50.well_bottom_clearance.aspirate = 6
+p50.well_bottom_clearance.dispense = 0
 
 ### wellplate ###
 with open('src/hardware/smartprobes_96_wellplate_200ul_flat.json') as labware_file:
@@ -72,7 +79,7 @@ while data[5]=='False': #intil close==True
         pipette, pipette_max_volume = p50, 50
 
     if (material, concentration) not in [(tuberack_materials[w]['material'], tuberack_materials[w]['concentration']) for w in list(tuberack_materials)]: #check for wrongwriting in materials
-        print(material + ' ' + concentration+ ' not in tuberack!')
+        print(str(material) + ' ' + str(concentration) + ' not in tuberack!')
     tube_label = find_tube_with_enough_volume(material, concentration, volume)
     tube, tube_volume = tube_label, tuberack_materials[tube_label]['volume']
 
@@ -90,7 +97,10 @@ while data[5]=='False': #intil close==True
         pipette.blow_out(well)
         volume -= pipette_max_volume
 
-    pipette.return_tip()
+    if return_tips:
+        pipette.return_tip()
+    else:
+        pipette.drop_tip() #thrash
 
     data, _ = opentrons_socket.recvfrom(1024) #get next action from server
     data = data.decode('utf-8').split(',')
