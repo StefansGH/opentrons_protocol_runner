@@ -89,7 +89,7 @@ while data[5]=='False': #intil close==True
         remaining_volume_to_pipette -= v
         pipette.aspirate(v, tuberack[tube].bottom())
         pipette.dispense(v, well, rate=10.0)
-        pipette.mix(3, pipette_max_volume, well)
+        pipette.mix(7, pipette_max_volume, well)
         pipette.blow_out(well)
         pipette.touch_tip(well, v_offset=-5, radius=1.3)
         pipette.blow_out(well)
