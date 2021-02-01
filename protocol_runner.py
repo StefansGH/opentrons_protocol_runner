@@ -73,8 +73,10 @@ while data[5]=='False': #intil close==True
    
     if volume <= 10: 
         pipette, pipette_max_volume = p10, 10
+        pipette.flow_rate.dispense = 20
     else:
         pipette, pipette_max_volume = p50, 50
+        pipette.flow_rate.dispense = 100
 
     if (material, concentration) not in [(tuberack_materials[w]['material'], tuberack_materials[w]['concentration']) for w in list(tuberack_materials)]: #check for wrongwriting in materials
         print(str(material) + ' ' + str(concentration) + ' not in tuberack!')
@@ -104,6 +106,6 @@ while data[5]=='False': #intil close==True
     data = data.decode('utf-8').split(',')
 
 protocol.home()
-#opentrons_socket.close()
+opentrons_socket.close()
 
 print("\n".join(protocol._commands))
