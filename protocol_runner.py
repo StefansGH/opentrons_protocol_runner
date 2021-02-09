@@ -53,13 +53,13 @@ with open('src/hardware/smartprobes_96_tiprack_200ul.json') as labware_file:
 tiprack_200 = protocol.load_labware_from_definition(smartprobes_tiprack_200, 5)
 
 p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10]) #1-10
-p10.well_bottom_clearance.aspirate = -1
-p10.well_bottom_clearance.dispense = -1
+p10.well_bottom_clearance.aspirate = 0
+p10.well_bottom_clearance.dispense = 7
 p10.starting_tip = tiprack_10.well(data[7])
 
 p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
-p50.well_bottom_clearance.aspirate = 5
-p50.well_bottom_clearance.dispense = 5
+p50.well_bottom_clearance.aspirate = 20
+p50.well_bottom_clearance.dispense = 15
 p50.starting_tip = tiprack_200.well(data[8])
 
 ### wellplate ###
@@ -69,6 +69,7 @@ wellplate = protocol.load_labware_from_definition(smartprobes_wellplate, 3)
 
 protocol_lentgh = 0
 volume_in_well = {}
+return_tip = True
 
 ### protocol ###
 protocol.home()
@@ -78,29 +79,28 @@ while data[5]=='False': #intil close==True
     volume = float(data[2])
     well_label = int(data[4])
     well = wellplate.wells()[well_label]
+    mix = data[9]=='True'
     
-    if data[9]=='True': #mix
-        pipette = p50
+    if mix:
+        pipette, pipette_max_volume = p50, 50
         pipette.flow_rate.dispense = 500
-        pipette.pick_up_tip()
+        if return_tip:
+            pipette.pick_up_tip()
         volume_hight = (volume_in_well[well_label]-50) / (math.pi*((well.diameter/2)**2))
         for _ in range(10):
             pipette.aspirate(volume=50, location=well.bottom(z=volume_hight*random.random()))
             pipette.dispense(volume=50, location=well.bottom(z=volume_hight*random.random()))
-        if return_tips:
-            pipette.return_tip()
-        else:
-            pipette.drop_tip() #thrash
 
     else: #pipette
-
         if volume <= 10: 
             pipette, pipette_max_volume = p10, 10
             pipette.flow_rate.dispense = 20
-            
         else:
             pipette, pipette_max_volume = p50, 50
             pipette.flow_rate.dispense = 100
+
+        if return_tip:
+            pipette.pick_up_tip()
 
         if (material, concentration) not in [(tuberack_materials[w]['material'], tuberack_materials[w]['concentration']) for w in list(tuberack_materials)]: #check for wrongwriting in materials
             print(str(material) + ' ' + str(concentration) + ' not in tuberack!')
@@ -109,14 +109,13 @@ while data[5]=='False': #intil close==True
 
         remaining_volume_to_pipette = volume
         while remaining_volume_to_pipette>0:
-            pipette.pick_up_tip()
             v = min(pipette_max_volume, remaining_volume_to_pipette)
             tuberack_materials = update_tuberack_volumes(tuberack_materials, tube_label, v)
             remaining_volume_to_pipette -= v
             pipette.aspirate(v, tuberack[tube].bottom())
             pipette.dispense(v, well)
             pipette.blow_out(well)
-            pipette.touch_tip(well, v_offset=-5, radius=1.3)
+            pipette.touch_tip(well, v_offset=-3, radius=1.5)
             pipette.blow_out(well)
             volume -= pipette_max_volume
 
@@ -125,13 +124,18 @@ while data[5]=='False': #intil close==True
             else:
                 volume_in_well[well_label] = volume_in_well[well_label] + v
 
-            if return_tips:
-                pipette.return_tip()
-            else:
-                pipette.drop_tip() #thrash
-
     data, _ = opentrons_socket.recvfrom(1024) #get next action from server
     data = data.decode('utf-8').split(',')
+    
+    if mix and data[9]=='True': return_tip=False #2x mix
+    elif not mix and data[9]!='True' and data[0]==material and float(data[1])==concentration: return_tip=False #same material
+    elif not mix and data[9]=='True' and pipette_max_volume==50: return_tip=False #mix after material
+    else: return_tip = True
+    if return_tip:
+        if return_tips:
+            pipette.return_tip()
+        else:
+            pipette.drop_tip() #thrash
 
     print("\n".join(protocol._commands[protocol_lentgh:]))
     protocol_lentgh = len(protocol._commands)
