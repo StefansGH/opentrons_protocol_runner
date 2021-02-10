@@ -53,13 +53,13 @@ with open('src/hardware/smartprobes_96_tiprack_200ul.json') as labware_file:
 tiprack_200 = protocol.load_labware_from_definition(smartprobes_tiprack_200, 5)
 
 p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10]) #1-10
-p10.well_bottom_clearance.aspirate = 0
-p10.well_bottom_clearance.dispense = 7
+#p10.well_bottom_clearance.aspirate = 0
+#p10.well_bottom_clearance.dispense = 7
 p10.starting_tip = tiprack_10.well(data[7])
 
 p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
-p50.well_bottom_clearance.aspirate = 20
-p50.well_bottom_clearance.dispense = 15
+#p50.well_bottom_clearance.aspirate = 0
+#p50.well_bottom_clearance.dispense = 13
 p50.starting_tip = tiprack_200.well(data[8])
 
 ### wellplate ###
@@ -83,21 +83,29 @@ while data[5]=='False': #intil close==True
     
     if mix:
         pipette, pipette_max_volume = p50, 50
-        pipette.flow_rate.dispense = 500
+        pipette.flow_rate.dispense = 2000
         if return_tip:
             pipette.pick_up_tip()
         volume_hight = (volume_in_well[well_label]-50) / (math.pi*((well.diameter/2)**2))
         for _ in range(10):
-            pipette.aspirate(volume=50, location=well.bottom(z=volume_hight*random.random()))
-            pipette.dispense(volume=50, location=well.bottom(z=volume_hight*random.random()))
+            pipette.aspirate(volume=50, location=well.bottom(z=max(2,volume_hight*random.random())))
+            pipette.dispense(volume=50, location=well.bottom(z=max(2,volume_hight*random.random())))
 
     else: #pipette
         if volume <= 10: 
             pipette, pipette_max_volume = p10, 10
             pipette.flow_rate.dispense = 20
+            tube_bottom_clearance = -1
+            well_top_clearance = -2
+            v_offset = -4
+            radius = 1.4
         else:
             pipette, pipette_max_volume = p50, 50
             pipette.flow_rate.dispense = 100
+            tube_bottom_clearance = 2
+            well_top_clearance = -3
+            v_offset = -1
+            radius = 1.3
 
         if return_tip:
             pipette.pick_up_tip()
@@ -112,10 +120,10 @@ while data[5]=='False': #intil close==True
             v = min(pipette_max_volume, remaining_volume_to_pipette)
             tuberack_materials = update_tuberack_volumes(tuberack_materials, tube_label, v)
             remaining_volume_to_pipette -= v
-            pipette.aspirate(v, tuberack[tube].bottom())
-            pipette.dispense(v, well)
+            pipette.aspirate(v, tuberack[tube].bottom(tube_bottom_clearance))
+            pipette.dispense(v, well.top())
             pipette.blow_out(well)
-            pipette.touch_tip(well, v_offset=-3, radius=1.5)
+            pipette.touch_tip(well, v_offset=v_offset, radius=radius)
             pipette.blow_out(well)
             volume -= pipette_max_volume
 
