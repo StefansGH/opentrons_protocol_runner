@@ -26,7 +26,7 @@ return_tips = data[6]=="True"
 ### tuberack ###
 with open('src/hardware/smartprobes_24_tuberack_eppendorf_2ml_safelock_snapcap.json') as labware_file:
     smartprobes_tuberack = json.load(labware_file)
-tuberack = protocol.load_labware_from_definition(smartprobes_tuberack, 1)
+tuberack = protocol.load_labware_from_definition(smartprobes_tuberack, 2)
 
 with open('src/materials/tuberack.json') as materials_file:
     tuberack_materials = json.load(materials_file)
@@ -46,16 +46,17 @@ def update_tuberack_volumes(tuberack_materials, tube_label, volume):
 ### pipette/tips ###
 with open('src/hardware/smartprobes_96_tiprack_10ul.json') as labware_file:
     smartprobes_tiprack_10 = json.load(labware_file)
-tiprack_10 = protocol.load_labware_from_definition(smartprobes_tiprack_10, 2)
+tiprack_10_1 = protocol.load_labware_from_definition(smartprobes_tiprack_10, 1)
+tiprack_10_2 = protocol.load_labware_from_definition(smartprobes_tiprack_10, 4)
 
 with open('src/hardware/smartprobes_96_tiprack_200ul.json') as labware_file:
     smartprobes_tiprack_200 = json.load(labware_file)
-tiprack_200 = protocol.load_labware_from_definition(smartprobes_tiprack_200, 5)
+tiprack_200 = protocol.load_labware_from_definition(smartprobes_tiprack_200, 7)
 
-p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10]) #1-10
+p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10_1,tiprack_10_2]) #1-10
 #p10.well_bottom_clearance.aspirate = 0
 #p10.well_bottom_clearance.dispense = 7
-p10.starting_tip = tiprack_10.well(data[7])
+p10.starting_tip = tiprack_10_1.well(data[7])
 
 p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
 #p50.well_bottom_clearance.aspirate = 0
@@ -86,24 +87,24 @@ while data[5]=='False': #intil close==True
         pipette.flow_rate.dispense = 2000
         if return_tip:
             pipette.pick_up_tip()
-        volume_hight = (volume_in_well[well_label]-50) / (math.pi*((well.diameter/2)**2))
-        for _ in range(10):
-            pipette.aspirate(volume=50, location=well.bottom(z=max(2,volume_hight*random.random())))
-            pipette.dispense(volume=50, location=well.bottom(z=max(2,volume_hight*random.random())))
+        volume_hight = (volume_in_well[well_label]-40) / (math.pi*((well.diameter/2)**2))
+        for _ in range(7):
+            pipette.aspirate(volume=50, location=well.bottom(z=max(3,volume_hight*random.random())))
+            pipette.dispense(volume=50, location=well.bottom(z=max(3,volume_hight*random.random())))
 
     else: #pipette
         if volume <= 10: 
             pipette, pipette_max_volume = p10, 10
             pipette.flow_rate.dispense = 20
-            tube_bottom_clearance = -1
-            well_top_clearance = -2
-            v_offset = -4
+            tube_bottom_clearance = -2
+            well_bottom_clearance = -2
+            v_offset = -6
             radius = 1.4
         else:
             pipette, pipette_max_volume = p50, 50
             pipette.flow_rate.dispense = 100
             tube_bottom_clearance = 2
-            well_top_clearance = -3
+            well_bottom_clearance = 3
             v_offset = -1
             radius = 1.3
 
@@ -121,7 +122,7 @@ while data[5]=='False': #intil close==True
             tuberack_materials = update_tuberack_volumes(tuberack_materials, tube_label, v)
             remaining_volume_to_pipette -= v
             pipette.aspirate(v, tuberack[tube].bottom(tube_bottom_clearance))
-            pipette.dispense(v, well.top())
+            pipette.dispense(v, well.bottom(well_bottom_clearance))
             pipette.blow_out(well)
             pipette.touch_tip(well, v_offset=v_offset, radius=radius)
             pipette.blow_out(well)
@@ -129,6 +130,7 @@ while data[5]=='False': #intil close==True
 
             if well_label not in volume_in_well:
                 volume_in_well[well_label] = v
+                return_tip = False #well was empty
             else:
                 volume_in_well[well_label] = volume_in_well[well_label] + v
 
@@ -136,9 +138,9 @@ while data[5]=='False': #intil close==True
     data = data.decode('utf-8').split(',')
     
     if mix and data[9]=='True': return_tip=False #2x mix
-    elif not mix and data[9]!='True' and data[0]==material and float(data[1])==concentration: return_tip=False #same material
+    #elif not mix and data[9]!='True' and data[0]==material and float(data[1])==concentration: return_tip=False #same material
     elif not mix and data[9]=='True' and pipette_max_volume==50: return_tip=False #mix after material
-    else: return_tip = True
+    else: return_tip=True
     if return_tip:
         if return_tips:
             pipette.return_tip()
