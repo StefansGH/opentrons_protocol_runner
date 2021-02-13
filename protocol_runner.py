@@ -5,15 +5,15 @@ import socket
 import sys
 import random
 import math
+import time
 
-host = str(sys.argv[1]) #ip
+opentrons_host = str(sys.argv[1]) #ip
 port = 65432
-
 opentrons_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-opentrons_socket.bind((host, port))
-
+opentrons_socket.bind((opentrons_host, port))
 data, _ = opentrons_socket.recvfrom(1024)
 data = data.decode('utf-8').split(',') #data is a string "material,units,simulate,well,close,return_tips,starting_tip_10,starting_tip_50,mix
+
 simulate = data[3]=="True"
 
 if not simulate:
@@ -54,13 +54,9 @@ with open('src/hardware/smartprobes_96_tiprack_200ul.json') as labware_file:
 tiprack_200 = protocol.load_labware_from_definition(smartprobes_tiprack_200, 7)
 
 p10 = protocol.load_instrument('p10_single', 'left', tip_racks=[tiprack_10_1,tiprack_10_2]) #1-10
-#p10.well_bottom_clearance.aspirate = 0
-#p10.well_bottom_clearance.dispense = 7
 p10.starting_tip = tiprack_10_1.well(data[7])
 
 p50 = protocol.load_instrument('p50_single', 'right', tip_racks=[tiprack_200]) #5-50
-#p50.well_bottom_clearance.aspirate = 0
-#p50.well_bottom_clearance.dispense = 13
 p50.starting_tip = tiprack_200.well(data[8])
 
 ### wellplate ###
@@ -70,24 +66,30 @@ wellplate = protocol.load_labware_from_definition(smartprobes_wellplate, 3)
 
 protocol_lentgh = 0
 volume_in_well = {}
-return_tip = True
+return_tip = False
+first_tip = True
+mix = False
+material = data[0]
+concentration = float(data[1])
+volume = float(data[2])
+well_label = int(data[4])
+well = wellplate.wells()[well_label]
+mix = data[9]=='True'
 
 ### protocol ###
 protocol.home()
 while data[5]=='False': #intil close==True
-    material = data[0]
-    concentration = float(data[1])
-    volume = float(data[2])
-    well_label = int(data[4])
-    well = wellplate.wells()[well_label]
-    mix = data[9]=='True'
-    
+
     if mix:
         pipette, pipette_max_volume = p50, 50
         pipette.flow_rate.dispense = 2000
-        if return_tip:
+        if not return_tip:
             pipette.pick_up_tip()
-        volume_hight = (volume_in_well[well_label]-40) / (math.pi*((well.diameter/2)**2))
+            return_tip = True
+        if well_label in volume_in_well:
+            volume_hight = (volume_in_well[well_label]-40) / (math.pi*((well.diameter/2)**2))
+        else:
+            volume_hight = 0
         for _ in range(7):
             pipette.aspirate(volume=50, location=well.bottom(z=max(3,volume_hight*random.random())))
             pipette.dispense(volume=50, location=well.bottom(z=max(3,volume_hight*random.random())))
@@ -108,8 +110,10 @@ while data[5]=='False': #intil close==True
             v_offset = -1
             radius = 1.3
 
-        if return_tip:
+        if (not return_tip) or first_tip:
             pipette.pick_up_tip()
+            return_tip = True
+            first_tip = False
 
         if (material, concentration) not in [(tuberack_materials[w]['material'], tuberack_materials[w]['concentration']) for w in list(tuberack_materials)]: #check for wrongwriting in materials
             print(str(material) + ' ' + str(concentration) + ' not in tuberack!')
@@ -133,22 +137,39 @@ while data[5]=='False': #intil close==True
                 return_tip = False #well was empty
             else:
                 volume_in_well[well_label] = volume_in_well[well_label] + v
+        return_tip = True
 
-    data, _ = opentrons_socket.recvfrom(1024) #get next action from server
-    data = data.decode('utf-8').split(',')
-    
-    if mix and data[9]=='True': return_tip=False #2x mix
-    #elif not mix and data[9]!='True' and data[0]==material and float(data[1])==concentration: return_tip=False #same material
-    elif not mix and data[9]=='True' and pipette_max_volume==50: return_tip=False #mix after material
-    else: return_tip=True
-    if return_tip:
+    mix_prev = mix
+    pipette_max_volume_prev = pipette_max_volume
+
+
+    #if mix_prev and mix: return_tip=False #2x mix
+    #elif not mix_prev and mix and pipette_max_volume_prev==50: return_tip=False #mix after material
+    #if data[10]=='True': return_tip=True
+    #else: return_tip=True
+    if return_tip and not first_tip:
+        print('return tip')
         if return_tips:
             pipette.return_tip()
         else:
             pipette.drop_tip() #thrash
-
+        return_tip = False
+    
     print("\n".join(protocol._commands[protocol_lentgh:]))
     protocol_lentgh = len(protocol._commands)
+    time.sleep(1)
+
+    data, _ = opentrons_socket.recvfrom(1024) #get next action from server
+    data = data.decode('utf-8').split(',')
+
+    material = data[0]
+    concentration = float(data[1])
+    volume = float(data[2])
+    well_label = int(data[4])
+    well = wellplate.wells()[well_label]
+    mix = data[9]=='True'
+
+
 
 protocol.home()
 opentrons_socket.close()
