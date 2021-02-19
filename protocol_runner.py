@@ -90,7 +90,7 @@ while data[5]=='False': #intil close==True
             volume_hight = (volume_in_well[well_label]-40) / (math.pi*((well.diameter/2)**2))
         else:
             volume_hight = 0
-        for _ in range(7):
+        for _ in range(10):
             pipette.aspirate(volume=50, location=well.bottom(z=max(3,volume_hight*random.random())))
             pipette.dispense(volume=50, location=well.bottom(z=max(3,volume_hight*random.random())))
 
@@ -117,6 +117,7 @@ while data[5]=='False': #intil close==True
 
         if (material, concentration) not in [(tuberack_materials[w]['material'], tuberack_materials[w]['concentration']) for w in list(tuberack_materials)]: #check for wrongwriting in materials
             print(str(material) + ' ' + str(concentration) + ' not in tuberack!')
+            break
         tube_label = find_tube_with_enough_volume(material, concentration, volume)
         tube, tube_volume = tube_label, tuberack_materials[tube_label]['volume']
 
@@ -142,13 +143,11 @@ while data[5]=='False': #intil close==True
     mix_prev = mix
     pipette_max_volume_prev = pipette_max_volume
 
-
-    #if mix_prev and mix: return_tip=False #2x mix
+    #if mix_prev and mix: return_tip=True #2x mix
     #elif not mix_prev and mix and pipette_max_volume_prev==50: return_tip=False #mix after material
     #if data[10]=='True': return_tip=True
     #else: return_tip=True
     if return_tip and not first_tip:
-        print('return tip')
         if return_tips:
             pipette.return_tip()
         else:
@@ -157,7 +156,7 @@ while data[5]=='False': #intil close==True
     
     print("\n".join(protocol._commands[protocol_lentgh:]))
     protocol_lentgh = len(protocol._commands)
-    time.sleep(1)
+    #time.sleep(0)
 
     data, _ = opentrons_socket.recvfrom(1024) #get next action from server
     data = data.decode('utf-8').split(',')
